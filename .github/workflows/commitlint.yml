@@ -53,7 +53,9 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install tools via mise
-        run: mise install
+        run: |
+          mise install
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
 
       - name: Install commitlint
         run: mise run lint:install

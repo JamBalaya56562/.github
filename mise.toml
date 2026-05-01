@@ -36,4 +36,7 @@ run = "bun commitlint --last --verbose"
 
 [tasks."lint:pr"]
 description = "Lint PR commits — pass flags as args, e.g.: mise run lint:pr -- --from SHA --to SHA --verbose"
-run = "bun commitlint {{args}}"
+run = """
+#!/usr/bin/env bash
+bun commitlint "$@"
+"""

@@ -78,7 +78,9 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install tools via mise
-        run: mise install
+        run: |
+          mise install
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
 
       # Download the state artifact from the most recent successful apply
       # run. LATEST_APPLY_RUN_ID is a repo variable maintained by this

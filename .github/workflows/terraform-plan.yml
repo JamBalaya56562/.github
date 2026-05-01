@@ -69,7 +69,9 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install tools via mise
-        run: mise install
+        run: |
+          mise install
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
 
       # Download the latest state artifact produced by a prior apply run.
       # Allowed to fail on the very first run when no artifact exists yet.
