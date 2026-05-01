@@ -9,3 +9,31 @@
 [tools]
 bun = "latest"
 opentofu = "latest"
+
+[tasks."tofu:init"]
+description = "Initialize the OpenTofu working directory"
+run = "tofu init"
+
+[tasks."tofu:validate"]
+description = "Validate OpenTofu configuration"
+run = "tofu validate"
+
+[tasks."tofu:fmt"]
+description = "Format OpenTofu files in place"
+run = "tofu fmt -recursive"
+
+[tasks."tofu:fmt-check"]
+description = "Check OpenTofu formatting without writing changes"
+run = "tofu fmt -check -recursive"
+
+[tasks."lint:install"]
+description = "Install commitlint dev dependencies"
+run = "bun add -d @commitlint/cli @commitlint/config-conventional"
+
+[tasks."lint:last"]
+description = "Lint the last commit message"
+run = "bun commitlint --last --verbose"
+
+[tasks."lint:pr"]
+description = "Lint PR commits — pass flags as args, e.g.: mise run lint:pr -- --from SHA --to SHA --verbose"
+run = "bun commitlint {{args}}"

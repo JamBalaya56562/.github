@@ -47,13 +47,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: latest
+      - name: Setup mise
+        uses: jdx/mise-action@v0  # TODO: pin to a commit SHA before merging to upstream — see https://github.com/jdx/mise-action/releases
 
       - name: Install commitlint
-        run: bun add -d @commitlint/cli @commitlint/config-conventional
+        run: mise run lint:install
 
       - name: Create commitlint config
         run: |
@@ -66,7 +64,7 @@ jobs:
 
       - name: Validate last commit (push / workflow_dispatch)
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        run: bun commitlint --last --verbose
+        run: mise run lint:last
 
       - name: Validate PR commits
         id: result
@@ -75,7 +73,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          bun commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose \
+          mise run lint:pr -- --from "$BASE_SHA" --to "$HEAD_SHA" --verbose \
             &> >(tee commitlint.log) || STATUS=$?
           if [ "${STATUS:-0}" -ne 0 ]; then
             echo "is_success=false" >> "$GITHUB_OUTPUT"

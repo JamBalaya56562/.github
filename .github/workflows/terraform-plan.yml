@@ -26,11 +26,6 @@ on:
         type: string
         required: false
         default: infra/github-org
-      tofu_version:
-        description: "OpenTofu version to install."
-        type: string
-        required: false
-        default: "1.8.0"
       tfvar_assignments:
         description: "Extra -var=key=value arguments appended to tofu plan, one per line. github_owner is preset from the repository owner and must not be repeated here."
         type: string
@@ -68,11 +63,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup OpenTofu
-        uses: opentofu/setup-opentofu@fc711fa910b93cba0f3fbecaafc9f42fd0c411cb # v2.0.0
-        with:
-          tofu_version: ${{ inputs.tofu_version }}
-          tofu_wrapper: false
+      - name: Setup mise
+        uses: jdx/mise-action@v0  # TODO: pin to a commit SHA before merging to upstream — see https://github.com/jdx/mise-action/releases
 
       # Download the latest state artifact produced by a prior apply run.
       # Allowed to fail on the very first run when no artifact exists yet.
@@ -86,18 +78,18 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Tofu Init
-        run: tofu init
+        run: mise run tofu:init
         env:
           GITHUB_TOKEN: ${{ secrets.TF_TOKEN_GITHUB }}
 
       - name: Tofu Format Check
         id: fmt
-        run: tofu fmt -check -recursive
+        run: mise run tofu:fmt-check
         continue-on-error: true
 
       - name: Tofu Validate
         id: validate
-        run: tofu validate
+        run: mise run tofu:validate
 
       - name: Tofu Plan
         id: plan

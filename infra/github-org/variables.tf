@@ -32,6 +32,7 @@ variable "allowed_action_patterns" {
   EOT
   type        = list(string)
   default = [
+    "jdx/mise-action@*",
     "opentofu/setup-opentofu@*",
     "oven-sh/setup-bun@*",
   ]

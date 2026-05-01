@@ -28,11 +28,6 @@ on:
         type: string
         required: false
         default: infra/github-org
-      tofu_version:
-        description: "OpenTofu version to install."
-        type: string
-        required: false
-        default: "1.8.0"
       commit_message:
         description: "Commit message used when pushing fmt fixes back to the PR."
         type: string
@@ -69,14 +64,11 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
-      - name: Setup OpenTofu
-        uses: opentofu/setup-opentofu@fc711fa910b93cba0f3fbecaafc9f42fd0c411cb # v2.0.0
-        with:
-          tofu_version: ${{ inputs.tofu_version }}
-          tofu_wrapper: false
+      - name: Setup mise
+        uses: jdx/mise-action@v0  # TODO: pin to a commit SHA before merging to upstream — see https://github.com/jdx/mise-action/releases
 
       - name: Tofu Format
-        run: tofu fmt -recursive
+        run: mise run tofu:fmt
 
       # Commit & push only when fmt actually changed files. `git diff
       # --quiet` exits non-zero when there are unstaged diffs, which we

@@ -26,11 +26,6 @@ on:
         type: string
         required: false
         default: infra/github-org
-      tofu_version:
-        description: "OpenTofu version to install."
-        type: string
-        required: false
-        default: "1.8.0"
       environment:
         description: "GitHub Environment to gate the apply on (leave empty to skip)."
         type: string
@@ -77,11 +72,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup OpenTofu
-        uses: opentofu/setup-opentofu@fc711fa910b93cba0f3fbecaafc9f42fd0c411cb # v2.0.0
-        with:
-          tofu_version: ${{ inputs.tofu_version }}
-          tofu_wrapper: false
+      - name: Setup mise
+        uses: jdx/mise-action@v0  # TODO: pin to a commit SHA before merging to upstream — see https://github.com/jdx/mise-action/releases
 
       # Download the state artifact from the most recent successful apply
       # run. LATEST_APPLY_RUN_ID is a repo variable maintained by this
@@ -98,12 +90,12 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Tofu Init
-        run: tofu init
+        run: mise run tofu:init
         env:
           GITHUB_TOKEN: ${{ secrets.TF_TOKEN_GITHUB }}
 
       - name: Tofu Validate
-        run: tofu validate
+        run: mise run tofu:validate
 
       - name: Tofu Apply
         id: apply
