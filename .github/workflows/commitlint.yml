@@ -47,8 +47,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@v0  # TODO: pin to a commit SHA before merging to upstream — see https://github.com/jdx/mise-action/releases
+      - name: Install mise
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install tools via mise
+        run: mise install
 
       - name: Install commitlint
         run: mise run lint:install

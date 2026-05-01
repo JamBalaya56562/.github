@@ -7,8 +7,8 @@
 # vivarium/mise.toml for the richer pin set.
 
 [tools]
-bun = "latest"
-opentofu = "latest"
+bun = "1"
+opentofu = "1.8.0"
 
 [tasks."tofu:init"]
 description = "Initialize the OpenTofu working directory"
