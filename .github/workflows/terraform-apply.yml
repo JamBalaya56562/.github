@@ -97,12 +97,12 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Tofu Init
-        run: mise run tofu:init
+        run: tofu init
         env:
           GITHUB_TOKEN: ${{ secrets.TF_TOKEN_GITHUB }}
 
       - name: Tofu Validate
-        run: mise run tofu:validate
+        run: tofu validate
 
       - name: Tofu Apply
         id: apply

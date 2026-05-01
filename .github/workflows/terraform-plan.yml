@@ -85,18 +85,18 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Tofu Init
-        run: mise run tofu:init
+        run: tofu init
         env:
           GITHUB_TOKEN: ${{ secrets.TF_TOKEN_GITHUB }}
 
       - name: Tofu Format Check
         id: fmt
-        run: mise run tofu:fmt-check
+        run: tofu fmt -check -recursive
         continue-on-error: true
 
       - name: Tofu Validate
         id: validate
-        run: mise run tofu:validate
+        run: tofu validate
 
       - name: Tofu Plan
         id: plan

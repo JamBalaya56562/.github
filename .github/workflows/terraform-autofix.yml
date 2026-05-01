@@ -75,7 +75,7 @@ jobs:
           echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
 
       - name: Tofu Format
-        run: mise run tofu:fmt
+        run: tofu fmt -recursive
 
       # Commit & push only when fmt actually changed files. `git diff
       # --quiet` exits non-zero when there are unstaged diffs, which we
