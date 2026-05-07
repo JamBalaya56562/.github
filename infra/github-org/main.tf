@@ -14,13 +14,15 @@
 
 # ─── Org settings ────────────────────────────────────────────────────
 #
-# Import (one-time, manual) before the first apply if the live org
-# pre-existed this module:
-#   tofu import github_organization_settings.this aletheia-works
+# Import (one-time) before the first apply if the live org pre-existed
+# this module — dispatch the seed-state.yml workflow:
+#   gh workflow run seed-state.yml --repo aletheia-works/.github \
+#     -f import_address=github_organization_settings.this \
+#     -f import_id=aletheia-works
 #
 # Values declared here must match the live UI state at import time;
-# otherwise the first apply will silently overwrite live settings.
-# `tofu plan` shows any drift before apply.
+# otherwise the first apply will silently overwrite live settings. The
+# `org-terraform-plan` PR comment shows any drift before apply.
 
 resource "github_organization_settings" "this" {
   billing_email = var.billing_email
@@ -86,8 +88,10 @@ resource "github_organization_settings" "this" {
 
 # ─── Actions policy ──────────────────────────────────────────────────
 #
-# Import:
-#   tofu import github_actions_organization_permissions.this aletheia-works
+# Import via seed-state.yml:
+#   gh workflow run seed-state.yml --repo aletheia-works/.github \
+#     -f import_address=github_actions_organization_permissions.this \
+#     -f import_id=aletheia-works
 
 resource "github_actions_organization_permissions" "this" {
   # Actions run in every repo in the org. (The only alternative value is
@@ -121,8 +125,10 @@ resource "github_actions_organization_permissions" "this" {
 # resource (added in integrations/github v6.12) — these attributes are NOT
 # part of `github_actions_organization_permissions` above.
 #
-# Import:
-#   tofu import github_actions_organization_workflow_permissions.this aletheia-works
+# Import via seed-state.yml:
+#   gh workflow run seed-state.yml --repo aletheia-works/.github \
+#     -f import_address=github_actions_organization_workflow_permissions.this \
+#     -f import_id=aletheia-works
 
 resource "github_actions_organization_workflow_permissions" "this" {
   organization_slug = var.github_owner
@@ -145,8 +151,10 @@ resource "github_actions_organization_workflow_permissions" "this" {
 # grows past solo development, convert the members list into its own
 # variable and add a `github_membership` per member with role="member".
 #
-# Import:
-#   tofu import 'github_membership.owners["JamBalaya56562"]' aletheia-works:JamBalaya56562
+# Import via seed-state.yml:
+#   gh workflow run seed-state.yml --repo aletheia-works/.github \
+#     -f import_address='github_membership.owners["JamBalaya56562"]' \
+#     -f import_id=aletheia-works:JamBalaya56562
 
 resource "github_membership" "owners" {
   for_each = toset(var.org_owners)

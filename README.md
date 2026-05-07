@@ -10,10 +10,11 @@ This repository holds **org-wide defaults and shared CI** for [aletheia-works](h
 | `CONTRIBUTING.md` | Shared contribution expectations |
 | `.github/ISSUE_TEMPLATE/*.yml` | Default issue forms for new repos |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Default PR template |
-| `.github/workflows/*.yml` | Reusable workflows (`workflow_call`) — `terraform-plan`, `terraform-apply`, `terraform-state-backup`, `commitlint`, `labeler`, `assign`, `vivarium-verdict`, `seed-state` |
+| `.github/workflows/*.yml` | Reusable workflows (`workflow_call`) — `terraform-plan`, `terraform-apply`, `terraform-autofix`, `commitlint`, `vivarium-verdict` — plus repo-local automations (thin callers, `seed-state`, `terraform-state-backup`, `labeler`, `assign`, `ghqr-weekly`) |
 | `infra/github-org/` | OpenTofu config for org-level GitHub settings |
+| `infra/dotgithub/` | OpenTofu config for this `.github` repository's own settings |
 | `brand/` | Org icon and shared brand assets |
-| `mise.toml` | Tool versions for local work in this repo (`bun`, `opentofu`) |
+| `mise.toml` | Tool versions for ad-hoc local authoring (`opentofu` for `tofu fmt`/`validate`); plan/apply runs in CI |
 
 Individual repositories may override any of the org-wide health files (`SECURITY.md`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, issue/PR templates) by placing their own versions in the repo root or `.github/`.
 
@@ -21,12 +22,13 @@ Individual repositories may override any of the org-wide health files (`SECURITY
 
 Repos under `aletheia-works/` consume the workflows in `.github/workflows/` via `workflow_call`. Notable callers and patterns:
 
-- `terraform-plan.yml` / `terraform-apply.yml` — used by both this repo's `infra/github-org/` and per-repo `infra/github/` (e.g. [vivarium/infra/github/](https://github.com/aletheia-works/vivarium/tree/main/infra/github)). Caller repos pass a thin wrapper; state and secrets stay in the caller's context.
+- `terraform-plan.yml` / `terraform-apply.yml` / `terraform-autofix.yml` — used by both this repo's `infra/github-org/` and `infra/dotgithub/`, and by per-repo `infra/github/` (e.g. [vivarium/infra/github/](https://github.com/aletheia-works/vivarium/tree/main/infra/github)). Caller repos pass a thin wrapper; state and secrets stay in the caller's context.
 - `commitlint.yml` — Conventional Commits enforcement, called from each repo's CI.
-- `labeler.yml` — path-based labelling, paired with each repo's `.github/labeler.yml`.
 - `vivarium-verdict.yml` — Contract v1 verdict validation for Vivarium-runnable reproductions.
 
-See `infra/github-org/README.md` for the org-state Terraform layout, and each repo's own `infra/github/README.md` for per-repo settings.
+`labeler.yml` and `assign.yml` in this repo's `.github/workflows/` are intentionally **not** reusable — they run only against this `.github` repo. Each consumer repo has its own copy of the labeler/assign workflows alongside its own `.github/labeler.yml` rules.
+
+See [`infra/github-org/README.md`](./infra/github-org/README.md) for the org-state Terraform layout, [`infra/dotgithub/README.md`](./infra/dotgithub/README.md) for this `.github` repo's own settings, and each repo's own `infra/github/README.md` for per-repo settings.
 
 ## License
 
