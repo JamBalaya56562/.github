@@ -1,10 +1,12 @@
-# Tool versions for local work in this repo.
+# Tool versions for ad-hoc local authoring in this repo.
 #
-# This is the org-wide `.github` repo, so it only needs the toolchain to
-# run the org-level OpenTofu under `infra/github-org/` and to lint the
-# reusable workflows. Per-repo language runtimes (python, ruby, php,
-# rust, …) live in each consumer repo's own `mise.toml` — see
-# vivarium/mise.toml for the richer pin set.
+# Plan / apply / fmt for `infra/github-org/` and `infra/dotgithub/` run
+# in CI (see `.github/workflows/org-terraform-*.yml` and
+# `.github/workflows/dotgithub-terraform-*.yml`); both CI and this file
+# track `latest` so local `tofu fmt` / `tofu validate` always matches
+# what CI runs. Per-repo language runtimes (python, ruby, php, rust, …)
+# live in each consumer repo's own `mise.toml` — see vivarium/mise.toml
+# for the richer pin set.
 
 [tools]
 opentofu = "latest"

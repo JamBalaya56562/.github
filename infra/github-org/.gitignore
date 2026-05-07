@@ -8,9 +8,12 @@ crash.log
 crash.*.log
 
 # Variable files may contain sensitive data (billing email, etc.).
+# This module is operated exclusively via GitHub Actions; tfvars are
+# never used in CI (values come from TF_VAR_* + tfvar_assignments), so
+# any *.tfvars file in this directory is by definition a local artifact
+# and must not be committed.
 *.tfvars
 *.tfvars.json
-!terraform.tfvars.example
 
 # Plan outputs
 *.tfplan

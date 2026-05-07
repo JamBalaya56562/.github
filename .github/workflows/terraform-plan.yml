@@ -33,7 +33,7 @@ on:
         description: "OpenTofu version to install."
         type: string
         required: false
-        default: "1.8.0"
+        default: "latest"
       tfvar_assignments:
         description: "Extra -var=key=value arguments appended to tofu plan, one per line. github_owner is preset from the repository owner and must not be repeated here."
         type: string

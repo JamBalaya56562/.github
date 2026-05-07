@@ -13,8 +13,10 @@ variable "org_description" {
 variable "billing_email" {
   description = "Org billing email. Also used as the contact email on the public profile."
   type        = string
-  # Intentionally has no default — must be set via terraform.tfvars locally or
-  # as TF_VAR_billing_email in CI so it never leaks into VCS.
+  # Intentionally has no default — supplied at runtime via the
+  # `BILLING_EMAIL` repo variable, threaded through CI as
+  # `tfvar_assignments` (plan/apply) or `TF_VAR_billing_email` (seed-state),
+  # so the value never lands in VCS.
 }
 
 variable "org_owners" {
@@ -40,8 +42,9 @@ variable "allowed_action_patterns" {
   description = <<-EOT
     Additional third-party actions permitted org-wide, as `<owner>/<repo>@*`
     patterns. GitHub-owned and verified-creator actions are allowed
-    unconditionally (see actions.tf). Keep this list minimal — every entry
-    widens the supply-chain surface.
+    unconditionally (see `github_actions_organization_permissions` in
+    main.tf). Keep this list minimal — every entry widens the supply-chain
+    surface.
   EOT
   type        = list(string)
   default = [

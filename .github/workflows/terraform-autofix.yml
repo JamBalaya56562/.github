@@ -38,7 +38,7 @@ on:
         description: "OpenTofu version to install."
         type: string
         required: false
-        default: "1.8.0"
+        default: "latest"
       commit_message:
         description: "Commit message used when pushing fmt fixes back to the PR."
         type: string

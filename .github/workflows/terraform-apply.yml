@@ -33,7 +33,7 @@ on:
         description: "OpenTofu version to install."
         type: string
         required: false
-        default: "1.8.0"
+        default: "latest"
       environment:
         description: "GitHub Environment to gate the apply on (leave empty to skip)."
         type: string
