@@ -116,15 +116,6 @@ jobs:
           REPO_OWNER: ${{ github.repository_owner }}
           IMPORT_ADDRESS: ${{ inputs.import_address }}
           IMPORT_ID: ${{ inputs.import_id }}
-          # Required variables for the modules this workflow may target.
-          # `tofu import` evaluates the whole module config (it has to —
-          # it needs to know the schema of the resource being imported),
-          # so any required variable without a default must be set here.
-          # Tofu silently ignores TF_VAR_* whose variable does not exist
-          # in the target module, so this stays harmless when importing
-          # into modules that do not declare these variables (e.g.
-          # infra/dotgithub does not use billing_email).
-          TF_VAR_billing_email: ${{ vars.BILLING_EMAIL }}
         run: |
           set -euo pipefail
           tofu import -var="github_owner=${REPO_OWNER}" "${IMPORT_ADDRESS}" "${IMPORT_ID}"
