@@ -32,6 +32,4 @@ jobs:
     uses: ./.github/workflows/terraform-plan.yml
     with:
       working_directory: infra/github-org
-      tfvar_assignments: |
-        billing_email=${{ vars.BILLING_EMAIL }}
     secrets: inherit

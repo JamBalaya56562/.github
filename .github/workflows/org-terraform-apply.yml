@@ -21,13 +21,11 @@ permissions:
 jobs:
   apply:
     # Skip on forks. Apply mutates the real org and depends on repo-scoped
-    # secrets/variables (TF_TOKEN_GITHUB, LATEST_APPLY_RUN_ID, BILLING_EMAIL)
-    # that don't exist in forks, so an upstream-sync push to a fork's main
-    # would otherwise trigger a guaranteed failure run.
+    # secrets/variables (TF_TOKEN_GITHUB, LATEST_APPLY_RUN_ID) that don't
+    # exist in forks, so an upstream-sync push to a fork's main would
+    # otherwise trigger a guaranteed failure run.
     if: github.repository_owner == 'aletheia-works'
     uses: ./.github/workflows/terraform-apply.yml
     with:
       working_directory: infra/github-org
-      tfvar_assignments: |
-        billing_email=${{ vars.BILLING_EMAIL }}
     secrets: inherit

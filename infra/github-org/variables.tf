@@ -13,10 +13,7 @@ variable "org_description" {
 variable "billing_email" {
   description = "Org billing email. Also used as the contact email on the public profile."
   type        = string
-  # Intentionally has no default — supplied at runtime via the
-  # `BILLING_EMAIL` repo variable, threaded through CI as
-  # `tfvar_assignments` (plan/apply) or `TF_VAR_billing_email` (seed-state),
-  # so the value never lands in VCS.
+  default     = "jambalaya.pyoncafe@outlook.jp"
 }
 
 variable "org_owners" {
