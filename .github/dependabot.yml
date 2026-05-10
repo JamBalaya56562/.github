@@ -11,8 +11,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "daily"
       time: "03:00"
       timezone: "Asia/Tokyo"
     labels:
@@ -27,14 +26,20 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+    # Roll every GitHub Actions update into a single daily PR
+    # instead of one per action; reviewing the SHA-pinned bumps
+    # together cuts merge overhead substantially.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
     open-pull-requests-limit: 5
 
   # ─── OpenTofu providers ──────────────────────
   - package-ecosystem: "terraform"
     directory: "/infra/github-org"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "daily"
       time: "03:00"
       timezone: "Asia/Tokyo"
     labels:
@@ -44,4 +49,8 @@ updates:
     commit-message:
       prefix: "chore(infra)"
       include: "scope"
+    groups:
+      terraform-providers:
+        patterns:
+          - "*"
     open-pull-requests-limit: 3
