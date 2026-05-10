@@ -169,7 +169,7 @@ jobs:
       # download failed before state existed at all.
       - name: Update latest apply run ID
         if: always() && hashFiles(format('{0}/terraform.tfstate', inputs.working_directory)) != ''
-        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           STATE_RUN_ID_VARIABLE: ${{ inputs.state_run_id_variable }}
         with:
@@ -199,7 +199,7 @@ jobs:
       # issues from human-filed ones that happen to share the label.
       - name: Notify on failure
         if: always() && steps.apply.outcome == 'failure'
-        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           WORKING_DIRECTORY: ${{ inputs.working_directory }}
           FAILURE_ISSUE_LABELS: ${{ inputs.failure_issue_labels }}
@@ -266,7 +266,7 @@ jobs:
       # close any open auto-filed failure issue for this module.
       - name: Auto-close resolved failure issue
         if: always() && steps.apply.outcome == 'success'
-        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           WORKING_DIRECTORY: ${{ inputs.working_directory }}
           FAILURE_ISSUE_LABELS: ${{ inputs.failure_issue_labels }}

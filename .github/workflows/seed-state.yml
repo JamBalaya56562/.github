@@ -136,7 +136,7 @@ jobs:
       # download the artifact published above. Uses TF_TOKEN_GITHUB
       # because the default GITHUB_TOKEN lacks variables:write permission.
       - name: Point run-id variable at this run
-        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           STATE_RUN_ID_VARIABLE: ${{ inputs.state_run_id_variable }}
         with:
