@@ -10,7 +10,7 @@ This repository holds **org-wide defaults and shared CI** for [aletheia-works](h
 | `CONTRIBUTING.md` | Shared contribution expectations |
 | `.github/ISSUE_TEMPLATE/*.yml` | Default issue forms for new repos |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Default PR template |
-| `.github/workflows/*.yml` | Reusable workflows (`workflow_call`) — `terraform-plan`, `terraform-apply`, `terraform-autofix`, `commitlint`, `vivarium-verdict` — plus repo-local automations (thin callers, `seed-state`, `terraform-state-backup`, `labeler`, `assign`, `ghqr-weekly`) |
+| `.github/workflows/*.yml` | Reusable workflows (`workflow_call`) — `terraform-plan`, `terraform-apply`, `terraform-autofix`, `commitlint` — plus repo-local automations (thin callers, `seed-state`, `terraform-state-backup`, `labeler`, `assign`, `ghqr-weekly`) |
 | `infra/github-org/` | OpenTofu config for org-level GitHub settings |
 | `infra/dotgithub/` | OpenTofu config for this `.github` repository's own settings |
 | `brand/` | Org icon and shared brand assets |
@@ -24,7 +24,6 @@ Repos under `aletheia-works/` consume the workflows in `.github/workflows/` via 
 
 - `terraform-plan.yml` / `terraform-apply.yml` / `terraform-autofix.yml` — used by both this repo's `infra/github-org/` and `infra/dotgithub/`, and by per-repo `infra/github/` (e.g. [vivarium/infra/github/](https://github.com/aletheia-works/vivarium/tree/main/infra/github)). Caller repos pass a thin wrapper; state and secrets stay in the caller's context.
 - `commitlint.yml` — Conventional Commits enforcement, called from each repo's CI.
-- `vivarium-verdict.yml` — Contract v1 verdict validation for Vivarium-runnable reproductions.
 
 `labeler.yml` and `assign.yml` in this repo's `.github/workflows/` are intentionally **not** reusable — they run only against this `.github` repo. Each consumer repo has its own copy of the labeler/assign workflows alongside its own `.github/labeler.yml` rules.
 
