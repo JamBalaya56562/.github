@@ -30,9 +30,9 @@ name: vivarium-verdict
 #   image             (optional) Image override. Default empty,
 #                     resolved at runtime to
 #                     "ghcr.io/aletheia-works/vivarium-<slug>:latest".
-#   expected_verdict  (optional) "pass" or "fail". Job fails if
+#   expected_verdict  (optional) "reproduced" or "unreproduced". Job fails if
 #                     the captured verdict does not match. Default
-#                     "pass" (i.e., the bug still reproduces).
+#                     "reproduced" (i.e., the bug still reproduces).
 #   timeout_minutes   (optional) Job timeout in minutes. Default 5.
 #                     Most Layer 2 recipes complete in seconds; the
 #                     budget exists for image-pull + slow networks.
@@ -58,10 +58,10 @@ on:
         type: string
         default: ''
       expected_verdict:
-        description: 'Expected verdict ("pass" or "fail"). Job fails if captured differs.'
+        description: 'Expected verdict ("reproduced" or "unreproduced"). Job fails if captured differs.'
         required: false
         type: string
-        default: 'pass'
+        default: 'reproduced'
       timeout_minutes:
         description: 'Job timeout in minutes.'
         required: false
@@ -70,6 +70,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   verdict:
@@ -120,6 +121,28 @@ jobs:
           echo "image=$image" >> "$GITHUB_OUTPUT"
           echo "Resolved image: $image"
 
+      - name: Validate expected verdict
+        env:
+          EXPECTED: ${{ inputs.expected_verdict }}
+        run: |
+          set -euo pipefail
+          case "$EXPECTED" in
+            reproduced|unreproduced)
+              ;;
+            *)
+              echo "::error::expected_verdict must be 'reproduced' or 'unreproduced' (got '${EXPECTED}')."
+              exit 1
+              ;;
+          esac
+
+      - name: Log in to GHCR
+        if: startsWith(steps.resolve.outputs.image, 'ghcr.io/')
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Pull image
         env:
           IMAGE: ${{ steps.resolve.outputs.image }}
@@ -128,9 +151,9 @@ jobs:
       - name: Run reproduction and capture verdict
         # Run the recipe, capture stdout / stderr / exit_code,
         # build a Contract v1 verdict.json envelope. Verdict
-        # semantics are inverse of typical CI framing: exit_code
-        # 0 means the bug reproduces ("pass"); non-zero means the
-        # reproduction did not demonstrate the bug ("fail").
+        # semantics follow Contract v1 Revision 3: exit_code 0 means
+        # the bug reproduces ("reproduced"); non-zero means the
+        # reproduction did not demonstrate the bug ("unreproduced").
         id: capture
         env:
           IMAGE: ${{ steps.resolve.outputs.image }}
@@ -144,9 +167,9 @@ jobs:
           set -e
 
           if [ "$exit_code" -eq 0 ]; then
-            verdict="pass"
+            verdict="reproduced"
           else
-            verdict="fail"
+            verdict="unreproduced"
           fi
 
           # `image_digest` is the registry RepoDigest if available;
