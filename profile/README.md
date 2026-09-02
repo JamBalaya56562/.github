@@ -6,7 +6,7 @@ We build tools that let anyone reproduce a bug — any language, any environment
 
 ## Active projects
 
-- **[vivarium](https://github.com/aletheia-works/vivarium)** — a controlled environment for reproducing bugs. **Phase 6 — Usability and visual layer (in flight).** Phases 0–5 closed between 2026-04-26 and 2026-04-29: Layer 1 ships six WASM verticals (Pyodide, Ruby.wasm, php-wasm, Rust on `wasm32-wasip1`); Layer 2 ships four Docker recipes published to `ghcr.io/aletheia-works/`; Layer 3 ships one `rr` recipe. Public specs (Contract v1, Manifest v1, Recipes index v1) and a Vivarium MCP server for AI agent clients are published.
+- **[vivarium](https://github.com/aletheia-works/vivarium)** — a controlled environment for reproducing bugs, any language, any environment, any scale. Reproductions run across three layers, each chosen by what the bug demands: WASM verticals (Pyodide, Ruby.wasm, php-wasm, Rust on `wasm32-wasip1`) for instant, browser-native runs; Docker recipes published to `ghcr.io/aletheia-works/` for full-fidelity environments; and record-replay with `rr` for bugs that only surface under deterministic execution. Every reproduction emits a machine-readable verdict, and the public specs — Contract v1, Manifest v1, and the Recipes index — let outside repositories declare their own runnable reproductions. A Vivarium MCP server exposes the catalogue and verdicts to AI agent clients.
 
 ## Why "aletheia"?
 
