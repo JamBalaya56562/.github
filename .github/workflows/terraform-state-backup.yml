@@ -1,24 +1,24 @@
 name: Terraform State Backup
 
-# Periodically back up the state artifact to GitHub Release Assets for
-# long-term retention. Artifacts expire after at most 90 days on the Free
-# plan, whereas Release Assets are kept indefinitely.
+# Back up each module's state artifact to a GitHub Release asset and renew
+# the artifact itself. Artifacts expire after at most 90 days, so a module
+# whose apply stays quiet for a quarter would otherwise lose its state
+# entirely; re-uploading here rolls that window forward every week.
 #
-# The `workflow_run` listener stays per-repo (it cannot live in a
-# reusable workflow — workflow_run fires in the repo where the completed
-# workflow ran, not in the reusable workflow's home repo).
+# The `workflow_run` listener stays per-repo (it cannot live in a reusable
+# workflow — workflow_run fires in the repo where the completed workflow
+# ran, not in the reusable workflow's home repo).
 
 on:
   # Weekly backup (every Monday 03:00 UTC = 12:00 JST).
   schedule:
     - cron: '0 3 * * 1'
 
-  # Also back up automatically after each successful Terraform Apply
-  # (either via direct trigger or via the Org Terraform Apply caller).
+  # Also back up after an apply lands, for either module.
   workflow_run:
     workflows:
-      - "Terraform Apply"
       - "Org Terraform Apply"
+      - "Dotgithub Terraform Apply"
     types:
       - completed
 
@@ -27,66 +27,100 @@ on:
 
 permissions:
   contents: write # Required to create releases.
-  actions: read   # Required to read artifacts.
-
-concurrency:
-  group: terraform-state-backup
-  cancel-in-progress: false
+  actions: write  # Required to read artifacts and re-upload the renewed one.
 
 jobs:
   backup:
-    name: Backup State to Release
+    name: Backup ${{ matrix.root }} state
     runs-on: ubuntu-latest
     # Skip on forks. The schedule trigger fires in any fork that has
-    # Actions enabled, but forks have no terraform-state artifact to back
-    # up and lack the variables/permissions the upstream backup relies on.
-    # Combined with the workflow_run-success gate so a workflow_run from a
-    # failed (or non-existent) apply never produces a release.
+    # Actions enabled, but forks have no state artifact to back up and lack
+    # the variables/permissions the upstream backup relies on. Combined
+    # with the workflow_run-success gate so a workflow_run from a failed
+    # apply never produces a release.
     if: |
       github.repository_owner == 'aletheia-works' &&
       (github.event_name != 'workflow_run' ||
        github.event.workflow_run.conclusion == 'success')
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - root: github-org
+            artifact: terraform-state
+            variable: LATEST_APPLY_RUN_ID
+          - root: dotgithub
+            artifact: terraform-state-dotgithub
+            variable: LATEST_APPLY_RUN_ID_DOTGITHUB
 
-      - name: Download latest state artifact
-        id: download
+    # Same key the reusable apply and seed-state use, so a backup never
+    # runs while its module's state is being written.
+    concurrency:
+      group: ${{ matrix.artifact }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Resolve the run holding the state
+        id: source
+        env:
+          RUN_ID: ${{ vars[matrix.variable] }}
+        run: |
+          if [ -z "${RUN_ID}" ]; then
+            echo "::error::${{ matrix.variable }} is unset, so there is no state to back up for ${{ matrix.root }}. Run the apply, or seed the state first."
+            exit 1
+          fi
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Download state artifact
+        id: artifact
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: terraform-state
+          name: ${{ matrix.artifact }}
           path: ./state-backup/
+          run-id: ${{ steps.source.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check state exists
+      - name: Report the missing artifact and stop
+        if: steps.artifact.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ROOT: ${{ matrix.root }}
+        run: |
+          set -euo pipefail
+          tag="$(gh release list --limit 100 --json tagName,isPrerelease \
+            --jq --arg p "state-backup-${ROOT}-" \
+            '[.[] | select(.isPrerelease and (.tagName | startswith($p)))][0].tagName')"
+          echo "::error::The ${{ matrix.artifact }} artifact for run ${{ steps.source.outputs.run_id }} could not be downloaded, so this run cannot publish a backup or renew the artifact. Newest release backup: ${tag:-none}. Restore it with the Seed Terraform State workflow, then re-run this one."
+          exit 1
+
+      - name: Verify the state is usable
         id: check
         run: |
-          if [ -f ./state-backup/terraform.tfstate ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "state_size=$(stat -c%s ./state-backup/terraform.tfstate)" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "::warning::No state file found in artifacts. Skipping backup."
+          if [ ! -f ./state-backup/terraform.tfstate ]; then
+            echo "::error::Expected ./state-backup/terraform.tfstate after artifact download but the file is missing."
+            exit 1
           fi
+          if ! jq -e '.resources | length > 0' ./state-backup/terraform.tfstate >/dev/null 2>&1; then
+            echo "::error::State has no resources. Refusing to publish it as a backup or renew the artifact from it."
+            exit 1
+          fi
+          echo "state_size=$(stat -c%s ./state-backup/terraform.tfstate)" >> $GITHUB_OUTPUT
 
       - name: Generate timestamp
         id: timestamp
-        if: steps.check.outputs.exists == 'true'
         run: |
           echo "date=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "datetime=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-          echo "tag=state-backup-$(date -u +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          echo "tag=state-backup-${{ matrix.root }}-$(date -u +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
 
-      - name: Rename state file with timestamp
-        if: steps.check.outputs.exists == 'true'
+      - name: Copy state file under its timestamped name
         run: |
-          mv ./state-backup/terraform.tfstate \
-             ./state-backup/terraform-${{ steps.timestamp.outputs.date }}.tfstate
+          cp ./state-backup/terraform.tfstate \
+             ./state-backup/terraform-${{ matrix.root }}-${{ steps.timestamp.outputs.date }}.tfstate
 
       - name: Create Release with state backup
-        if: steps.check.outputs.exists == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.timestamp.outputs.tag }}
@@ -95,9 +129,10 @@ jobs:
           SIZE: ${{ steps.check.outputs.state_size }}
           EVENT: ${{ github.event_name }}
           COMMIT: ${{ github.sha }}
+          ROOT: ${{ matrix.root }}
         run: |
           cat > release_notes.md <<NOTES
-          Automated Terraform state backup.
+          Automated Terraform state backup for \`infra/${ROOT}\`.
 
           - **Timestamp**: ${DATETIME}
           - **Size**: ${SIZE} bytes
@@ -108,8 +143,8 @@ jobs:
 
           \`\`\`bash
           gh release download ${TAG} --pattern '*.tfstate'
-          mv terraform-*.tfstate infra/github-org/terraform.tfstate
-          cd infra/github-org/
+          mv terraform-${ROOT}-*.tfstate infra/${ROOT}/terraform.tfstate
+          cd infra/${ROOT}/
           tofu state list
           \`\`\`
 
@@ -118,16 +153,55 @@ jobs:
           NOTES
 
           gh release create "${TAG}" \
-            ./state-backup/*.tfstate \
-            --title "State Backup ${DATE}" \
+            "./state-backup/terraform-${ROOT}-${DATE}.tfstate" \
+            --title "State Backup ${ROOT} ${DATE}" \
             --notes-file release_notes.md \
             --prerelease
 
-      - name: Cleanup old backups (keep last 12)
-        if: steps.check.outputs.exists == 'true'
+      - name: Renew the state artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact }}
+          path: ./state-backup/terraform.tfstate
+          retention-days: 90
+          overwrite: true
+
+      - name: Point the run-id variable at this run
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SOURCE_RUN_ID: ${{ steps.source.outputs.run_id }}
+          VARIABLE: ${{ matrix.variable }}
+        with:
+          github-token: ${{ secrets.TF_TOKEN_GITHUB }}
+          script: |
+            const name = process.env.VARIABLE;
+            const expected = process.env.SOURCE_RUN_ID;
+            const { data } = await github.rest.actions.getRepoVariable({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name,
+            });
+            if (data.value !== expected) {
+              core.warning(
+                `${name} moved to ${data.value} while this run was reading ${expected}; ` +
+                  'a newer apply owns the state, so the artifact lease is left alone.',
+              );
+              return;
+            }
+            await github.rest.actions.updateRepoVariable({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name,
+              value: `${context.runId}`,
+            });
+
+      - name: Cleanup old backups (keep last 12 per module)
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ROOT: ${{ matrix.root }}
         with:
           script: |
+            const prefix = `state-backup-${process.env.ROOT}-`;
             const { data: releases } = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -135,7 +209,7 @@ jobs:
             });
 
             const backups = releases
-              .filter(r => r.tag_name.startsWith('state-backup-') && r.prerelease)
+              .filter(r => r.tag_name.startsWith(prefix) && r.prerelease)
               .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
             const toDelete = backups.slice(12);
@@ -158,4 +232,4 @@ jobs:
               }
             }
 
-            console.log(`Cleanup complete. Kept ${Math.min(backups.length, 12)} backups.`);
+            console.log(`Cleanup complete. Kept ${Math.min(backups.length, 12)} ${process.env.ROOT} backups.`);
