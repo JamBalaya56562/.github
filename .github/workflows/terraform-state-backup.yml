@@ -38,6 +38,10 @@ on:
         type: number
         required: false
         default: 12
+    secrets:
+      TF_TOKEN_GITHUB:
+        description: "PAT with variables:write, used to move the run-id variable to this run. The automatic GITHUB_TOKEN cannot write repo variables."
+        required: true
 
 permissions:
   contents: write # Required to create releases.

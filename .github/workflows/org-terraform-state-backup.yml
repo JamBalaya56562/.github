@@ -38,4 +38,5 @@ jobs:
       state_run_id_variable: LATEST_APPLY_RUN_ID
       module_label: github-org
       working_directory: infra/github-org
-    secrets: inherit
+    secrets:
+      TF_TOKEN_GITHUB: ${{ secrets.TF_TOKEN_GITHUB }}

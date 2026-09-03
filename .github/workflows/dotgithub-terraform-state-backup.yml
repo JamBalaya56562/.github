@@ -38,4 +38,5 @@ jobs:
       state_run_id_variable: LATEST_APPLY_RUN_ID_DOTGITHUB
       module_label: dotgithub
       working_directory: infra/dotgithub
-    secrets: inherit
+    secrets:
+      TF_TOKEN_GITHUB: ${{ secrets.TF_TOKEN_GITHUB }}
