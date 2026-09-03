@@ -1,0 +1,42 @@
+name: Dotgithub Terraform State Backup
+
+# Thin caller for the reusable terraform-state-backup workflow, covering
+# `infra/dotgithub/`. The triggers live here because `workflow_run` fires
+# in the repo where the completed workflow ran, not in the reusable
+# workflow's home repo.
+
+on:
+  # Weekly backup (every Monday 03:00 UTC = 12:00 JST).
+  schedule:
+    - cron: '0 3 * * 1'
+
+  # Also back up after this module's apply lands.
+  workflow_run:
+    workflows:
+      - "Dotgithub Terraform Apply"
+    types:
+      - completed
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  backup:
+    # Skip on forks, which have neither the state artifact nor the
+    # repo-scoped variables the backup reads. The workflow_run gate keeps
+    # a failed apply from publishing a release.
+    if: |
+      github.repository_owner == 'aletheia-works' &&
+      (github.event_name != 'workflow_run' ||
+       github.event.workflow_run.conclusion == 'success')
+    uses: ./.github/workflows/terraform-state-backup.yml
+    with:
+      state_artifact_name: terraform-state-dotgithub
+      state_run_id_variable: LATEST_APPLY_RUN_ID_DOTGITHUB
+      module_label: dotgithub
+      working_directory: infra/dotgithub
+    secrets:
+      TF_TOKEN_GITHUB: ${{ secrets.TF_TOKEN_GITHUB }}
