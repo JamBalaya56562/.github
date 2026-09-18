@@ -111,3 +111,76 @@ resource "github_repository_ruleset" "main" {
 # (not managed via tofu's github_repository_file). Plain repo content
 # stays out of state and contributors can edit it through normal PRs
 # without needing the tofu apply pipeline. See `.github/CODEOWNERS`.
+
+# ─── Labels ──────────────────────────────────────────────────────────
+#
+# The label taxonomy is vivarium's (see vivarium/infra/github/main.tf):
+# `type:` from the Conventional Commits type in the PR title, `scope:`
+# from the paths a PR touches, and the labels terraform-apply.yml files
+# its failure issue with. Colours and descriptions match vivarium's so a
+# label means the same thing in both repositories.
+
+locals {
+  labels = {
+    "type: bug" = {
+      color       = "d73a4a"
+      description = "Something isn't working"
+    }
+    "type: feature" = {
+      color       = "a2eeef"
+      description = "New feature or capability"
+    }
+    "type: docs" = {
+      color       = "0075ca"
+      description = "Documentation improvements"
+    }
+    "type: refactor" = {
+      color       = "cfd3d7"
+      description = "Code refactoring without behavior change"
+    }
+    "type: test" = {
+      color       = "bfdadc"
+      description = "Test additions or improvements"
+    }
+    "type: chore" = {
+      color       = "fef2c0"
+      description = "Maintenance tasks"
+    }
+
+    "scope: ci" = {
+      color       = "ededed"
+      description = "CI/CD pipeline"
+    }
+    "scope: infra" = {
+      color       = "5319e7"
+      description = "Infrastructure as Code"
+    }
+    "scope: templates" = {
+      color       = "5319e7"
+      description = "Issue/PR templates and org profile"
+    }
+
+    "priority: p0" = {
+      color       = "b60205"
+      description = "Critical - must fix immediately"
+    }
+    "status: apply-failure" = {
+      color       = "b60205"
+      description = "Auto-filed when Terraform Apply fails on main; auto-closed on recovery"
+    }
+
+    "ai: generated" = {
+      color       = "00d4aa"
+      description = "Created or modified by AI"
+    }
+  }
+}
+
+resource "github_issue_label" "labels" {
+  for_each = local.labels
+
+  repository  = github_repository.this.name
+  name        = each.key
+  color       = each.value.color
+  description = each.value.description
+}

@@ -22,7 +22,8 @@ All resources live in `main.tf`.
 | Resource | Notes |
 |---|---|
 | `github_repository` (`this`) | The `.github` repo itself — description, topics, feature toggles, merge strategy, `delete_branch_on_merge`, `web_commit_signoff_required`. Carries `lifecycle { prevent_destroy = true }` |
-| `github_branch_protection` (`main`) | Phase 1 baseline mirrored from vivarium — required reviews, required `Commitlint` status check, signed commits, linear history, no force pushes |
+| `github_repository_ruleset` (`main`) | Phase 1 baseline mirrored from vivarium — required reviews, required `Commitlint` status check, signed commits, linear history, no force pushes; the repository admin role bypasses it |
+| `github_issue_label` (`labels`) | The `type:` / `scope:` / `priority:` / `status:` / `ai:` labels, with the same colours and descriptions as vivarium |
 
 CODEOWNERS lives at `.github/CODEOWNERS` as a regular committed file,
 **not** managed via `github_repository_file`. Plain repo content stays
@@ -60,7 +61,7 @@ posts the diff as a PR comment; merging to `main` triggers
 ### First-time bootstrap (import existing repo)
 
 The `.github` repository pre-existed this module, so
-`github_repository.this` and `github_branch_protection.main` have to
+`github_repository.this` and `github_repository_ruleset.main` have to
 be imported into state once before the first apply. Run
 `seed-state.yml`, passing `working_directory`, `state_artifact_name`,
 and `state_run_id_variable` so the import lands in this module's state
@@ -78,8 +79,8 @@ gh workflow run seed-state.yml --repo aletheia-works/.github \
   -f working_directory=infra/dotgithub \
   -f state_artifact_name=terraform-state-dotgithub \
   -f state_run_id_variable=LATEST_APPLY_RUN_ID_DOTGITHUB \
-  -f import_address=github_branch_protection.main \
-  -f import_id=.github:main
+  -f import_address=github_repository_ruleset.main \
+  -f import_id=.github:23665020
 ```
 
 Each run uploads the updated state artifact and points
@@ -111,6 +112,6 @@ infra/dotgithub/
 ├── versions.tf                 # OpenTofu and provider versions
 ├── providers.tf                # GitHub provider config
 ├── variables.tf                # Input variables (just github_owner)
-├── main.tf                     # github_repository + github_branch_protection
+├── main.tf                     # github_repository, github_repository_ruleset, github_issue_label
 └── README.md
 ```
