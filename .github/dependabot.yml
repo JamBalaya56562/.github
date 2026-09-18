@@ -20,7 +20,6 @@ updates:
       - "ai: generated"
     commit-message:
       prefix: "chore(actions)"
-      include: "scope"
     # Skip non-security major-version updates — major bumps need targeted
     # human/AI review rather than automated merging.
     ignore:
@@ -37,7 +36,9 @@ updates:
 
   # ─── OpenTofu providers ──────────────────────
   - package-ecosystem: "terraform"
-    directory: "/infra/github-org"
+    directories:
+      - "/infra/dotgithub"
+      - "/infra/github-org"
     schedule:
       interval: "daily"
       time: "03:00"
@@ -48,7 +49,6 @@ updates:
       - "ai: generated"
     commit-message:
       prefix: "chore(infra)"
-      include: "scope"
     groups:
       terraform-providers:
         patterns:
