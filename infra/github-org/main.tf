@@ -28,6 +28,7 @@ resource "github_organization_settings" "this" {
   billing_email = var.billing_email
   email         = var.billing_email
   description   = var.org_description
+  location      = "Japan"
 
   # ─── Member permissions ──────────────────────────────────────
   # Only admins (organization owners) can create repositories. Members
