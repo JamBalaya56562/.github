@@ -4,6 +4,11 @@ name: Dependabot auto-merge
 # change is a patch or a minor; GitHub merges it once the ruleset's
 # required checks pass. A major waits for a person.
 #
+# It runs on synchronize too: every ecosystem here is one grouped pull
+# request that Dependabot force-pushes as members change, and auto-merge
+# is not re-evaluated once on. A push that turns the group major turns
+# auto-merge off again.
+#
 # GITHUB_TOKEN on purpose: a merge it sets up does not start the push
 # workflows, so a version bump alone does not cut a release of the
 # reusables. The next real change to them carries the bumps out.
@@ -13,6 +18,7 @@ on:
     types:
       - opened
       - reopened
+      - synchronize
 
 permissions:
   contents: write
@@ -36,3 +42,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr merge --auto --squash "$PR_URL"
+
+      - name: Disable auto-merge
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major' && github.event.pull_request.auto_merge != null
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --disable-auto "$PR_URL"
