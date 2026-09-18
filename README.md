@@ -25,6 +25,8 @@ Repos under `aletheia-works/` consume the workflows in `.github/workflows/` via 
 - `terraform-plan.yml` / `terraform-apply.yml` / `terraform-autofix.yml` — used by both this repo's `infra/github-org/` and `infra/dotgithub/`, and by per-repo `infra/github/` (e.g. [vivarium/infra/github/](https://github.com/aletheia-works/vivarium/tree/main/infra/github)). Caller repos pass a thin wrapper; state and secrets stay in the caller's context.
 - `commitlint.yml` — Conventional Commits enforcement, called from each repo's CI.
 
+The reusables are versioned. `release.yml` cuts a `vX.Y.Z` tag and a GitHub release whenever one of them changes on `main`, bumping major for a breaking change, minor for `feat`, patch for anything else. Callers pin `uses: aletheia-works/.github/.github/workflows/<name>.yml@<sha> # vX.Y.Z`; Dependabot follows the tag and moves the SHA and the comment together. A `# main` comment beside a SHA is one Dependabot can never update.
+
 `labeler.yml` and `assign.yml` in this repo's `.github/workflows/` are intentionally **not** reusable — they run only against this `.github` repo. Each consumer repo has its own copy of the labeler/assign workflows alongside its own `.github/labeler.yml` rules.
 
 See [`infra/github-org/README.md`](./infra/github-org/README.md) for the org-state Terraform layout, [`infra/dotgithub/README.md`](./infra/dotgithub/README.md) for this `.github` repo's own settings, and each repo's own `infra/github/README.md` for per-repo settings.
