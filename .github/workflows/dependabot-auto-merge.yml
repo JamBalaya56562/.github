@@ -1,0 +1,38 @@
+name: Dependabot auto-merge
+
+# Enables auto-merge (squash) on a Dependabot pull request whose highest
+# change is a patch or a minor; GitHub merges it once the ruleset's
+# required checks pass. A major waits for a person.
+#
+# GITHUB_TOKEN on purpose: a merge it sets up does not start the push
+# workflows, so a version bump alone does not cut a release of the
+# reusables. The next real change to them carries the bumps out.
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Read the update
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"

@@ -45,6 +45,7 @@ variable "allowed_action_patterns" {
   EOT
   type        = list(string)
   default = [
+    "dependabot/fetch-metadata@*",
     "jdx/mise-action@*",
     "opentofu/setup-opentofu@*",
     "oven-sh/setup-bun@*",

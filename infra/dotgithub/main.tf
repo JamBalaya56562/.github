@@ -34,11 +34,12 @@ resource "github_repository" "this" {
   has_wiki        = true
 
   # Merge strategy — current settings preserved; tightening is a separate
-  # decision once contributor flow stabilises.
+  # decision once contributor flow stabilises. Auto-merge is on for
+  # dependabot-auto-merge.yml, which enables it on Dependabot's PRs.
   allow_merge_commit = true
   allow_squash_merge = true
   allow_rebase_merge = true
-  allow_auto_merge   = false
+  allow_auto_merge   = true
 
   # Resolve ghqr `repo-feat-002` ("auto-delete branches not enabled").
   delete_branch_on_merge = true
@@ -55,10 +56,13 @@ resource "github_repository" "this" {
 
 # ─── Branch ruleset ──────────────────────────────────────────────────
 #
-# Phase 1 baseline. Mirrors vivarium/infra/github/main.tf so contributor
-# expectations are uniform across repos. The repository admin role can
-# bypass the ruleset so the sole maintainer can self-merge while solo;
-# drop the bypass once a second reviewer is available.
+# Mirrors vivarium/infra/github/main.tf so contributor expectations are
+# uniform across repos. No approving review is required: the sole
+# maintainer is the only reviewer, and the rule only ever gated
+# Dependabot, whose pull requests dependabot-auto-merge.yml now merges
+# once the checks pass. The repository admin role can bypass the ruleset
+# so the maintainer can self-merge while solo; drop the bypass and put
+# the review count back once a second reviewer is available.
 
 resource "github_repository_ruleset" "main" {
   name        = "main"
@@ -86,18 +90,20 @@ resource "github_repository_ruleset" "main" {
     required_signatures     = true
 
     pull_request {
-      required_approving_review_count   = 1
+      required_approving_review_count   = 0
       dismiss_stale_reviews_on_push     = true
-      require_code_owner_review         = true
+      require_code_owner_review         = false
       require_last_push_approval        = false
       required_review_thread_resolution = true
     }
 
     # `Commitlint` runs on every pull_request via this repo's own
     # .github/workflows/commitlint.yml (executed directly, not via a
-    # caller), so the context name is the bare job display name.
+    # caller), so the context name is the bare job display name. The
+    # branch need not be up to date: with several Dependabot pull
+    # requests open, each merge would otherwise invalidate the rest.
     required_status_checks {
-      strict_required_status_checks_policy = true
+      strict_required_status_checks_policy = false
 
       required_check {
         context        = "Commitlint"
