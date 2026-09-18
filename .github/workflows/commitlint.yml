@@ -37,8 +37,6 @@ jobs:
   commitlint:
     name: Commitlint
     runs-on: ubuntu-latest
-    # Skip Sapling-managed internal PR archive branches.
-    if: startsWith(github.ref_name, 'sapling-pr-archive-') == false
 
     steps:
       - name: Checkout
