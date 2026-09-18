@@ -53,41 +53,58 @@ resource "github_repository" "this" {
   }
 }
 
-# ─── Branch protection ───────────────────────────────────────────────
+# ─── Branch ruleset ──────────────────────────────────────────────────
 #
-# Phase 1 baseline. Mirrors vivarium/infra/github/branch_protection.tf
-# so contributor expectations are uniform across repos. `enforce_admins`
-# stays off so the sole maintainer can self-merge while solo; flip to
-# true once a second reviewer is available.
+# Phase 1 baseline. Mirrors vivarium/infra/github/main.tf so contributor
+# expectations are uniform across repos. The repository admin role can
+# bypass the ruleset so the sole maintainer can self-merge while solo;
+# drop the bypass once a second reviewer is available.
 
-resource "github_branch_protection" "main" {
-  repository_id = github_repository.this.node_id
-  pattern       = "main"
+resource "github_repository_ruleset" "main" {
+  name        = "main"
+  repository  = github_repository.this.name
+  target      = "branch"
+  enforcement = "active"
 
-  required_pull_request_reviews {
-    required_approving_review_count = 1
-    dismiss_stale_reviews           = true
-    require_code_owner_reviews      = true
-    require_last_push_approval      = false
+  conditions {
+    ref_name {
+      include = ["~DEFAULT_BRANCH"]
+      exclude = []
+    }
   }
 
-  # `Commitlint` runs on every pull_request via this repo's own
-  # .github/workflows/commitlint.yml (executed directly, not via a
-  # caller), so the context name is the bare job display name.
-  required_status_checks {
-    strict = true
-    contexts = [
-      "Commitlint",
-    ]
+  bypass_actors {
+    actor_id    = 5
+    actor_type  = "RepositoryRole"
+    bypass_mode = "always"
   }
 
-  enforce_admins = false
+  rules {
+    deletion                = true
+    non_fast_forward        = true
+    required_linear_history = true
+    required_signatures     = true
 
-  required_linear_history         = true
-  allows_force_pushes             = false
-  allows_deletions                = false
-  require_conversation_resolution = true
-  require_signed_commits          = true
+    pull_request {
+      required_approving_review_count   = 1
+      dismiss_stale_reviews_on_push     = true
+      require_code_owner_review         = true
+      require_last_push_approval        = false
+      required_review_thread_resolution = true
+    }
+
+    # `Commitlint` runs on every pull_request via this repo's own
+    # .github/workflows/commitlint.yml (executed directly, not via a
+    # caller), so the context name is the bare job display name.
+    required_status_checks {
+      strict_required_status_checks_policy = true
+
+      required_check {
+        context        = "Commitlint"
+        integration_id = 15368
+      }
+    }
+  }
 }
 
 # CODEOWNERS lives at .github/CODEOWNERS as a regular committed file

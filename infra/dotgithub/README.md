@@ -2,7 +2,7 @@
 
 OpenTofu configuration that manages the
 [`aletheia-works/.github`](https://github.com/aletheia-works/.github)
-repository itself (settings, topics, branch protection) declaratively.
+repository itself (settings, topics, the main branch ruleset) declaratively.
 
 This module is intentionally separate from
 [`infra/github-org/`](../github-org/) so that organization-level state
