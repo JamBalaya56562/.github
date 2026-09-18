@@ -1,26 +1,5 @@
 name: Terraform Plan
 
-# Reusable workflow that runs `tofu plan` against an OpenTofu module and
-# posts the diff as a PR comment. Designed to be called from any repo in
-# the org whose configuration lives under `infra/<dir>/`.
-#
-# Caller example (vivarium/.github/workflows/terraform-plan.yml):
-#
-#   jobs:
-#     plan:
-#       uses: aletheia-works/.github/.github/workflows/terraform-plan.yml@main
-#       with:
-#         working_directory: infra/github
-#       secrets: inherit
-#
-# State is still per-caller: the artifact name, the run-id repo
-# variable, and the concurrency group are all evaluated in the caller's
-# context, so the org's state and vivarium's state never intersect.
-# When a single caller repo manages multiple OpenTofu modules, override
-# `state_artifact_name` and `state_run_id_variable` so each module gets
-# its own state slot (e.g. infra/github-org and infra/dotgithub coexist
-# inside the .github repo this way).
-
 on:
   workflow_call:
     inputs:
@@ -52,19 +31,9 @@ on:
 
 permissions:
   contents: read
-  # `pull-requests: write` is required for the inline comment step on
-  # same-repo PRs. Fork PRs are downgraded to read by GitHub regardless
-  # of what we declare here, so the comment step is gated on
-  # `head.repo.full_name == github.repository`. The plan output is also
-  # written to the run's Step Summary so fork-PR authors can still read
-  # the plan from the Actions tab without write tokens.
   pull-requests: write
-  # Required to read the state artifact from a prior workflow run.
   actions: read
 
-# Avoid concurrent runs that could corrupt the state. Group is keyed
-# by the artifact name so two modules (e.g. infra/github-org and
-# infra/dotgithub) inside the same caller repo do not block each other.
 concurrency:
   group: ${{ inputs.state_artifact_name }}
   cancel-in-progress: false
@@ -81,18 +50,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          # Check out the PR's HEAD commit so plan reflects the change
-          # under review. Required for `pull_request_target` callers,
-          # which otherwise default to the base branch and would plan
-          # against unchanged code. Falls back to the push SHA on
-          # non-PR events. SECURITY NOTE: combined with secrets:inherit
-          # this means fork-PR .tf code is evaluated with org tokens.
-          # Acceptable because (a) tofu plan is read-only, (b) the
-          # codebase contains no `terraform_data`/`local-exec`/external
-          # data sources that would let HCL execute arbitrary commands,
-          # and (c) this org currently has only one trusted contributor.
-          # Re-evaluate before opening contributions to outside forks.
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Setup OpenTofu
         uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
@@ -100,8 +59,6 @@ jobs:
           tofu_version: ${{ inputs.tofu_version }}
           tofu_wrapper: false
 
-      # Download the latest state artifact produced by a prior apply run.
-      # Allowed to fail on the very first run when no artifact exists yet.
       - name: Download state artifact
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -138,9 +95,6 @@ jobs:
           tofu plan -no-color -out=tfplan \
             -var="github_owner=${REPO_OWNER}" \
             ${extra_args} 2>&1 | tee plan_output.txt
-          # Propagate tofu's exit code as the step's exit so
-          # steps.plan.outcome accurately reflects failure. `continue-on-error`
-          # below still lets the PR-comment step run afterwards.
           exit "${PIPESTATUS[0]}"
         env:
           GITHUB_TOKEN: ${{ secrets.TF_TOKEN_GITHUB }}
@@ -148,8 +102,6 @@ jobs:
           TFVAR_ASSIGNMENTS: ${{ inputs.tfvar_assignments }}
         continue-on-error: true
 
-      # Always-visible plan summary, including for fork PRs where the
-      # comment step below is skipped because GITHUB_TOKEN is read-only.
       - name: Write plan to Step Summary
         if: always()
         working-directory: ${{ github.workspace }}
@@ -176,7 +128,6 @@ jobs:
             echo
             echo '```terraform'
             if [ -f "$PLAN_OUTPUT_PATH" ]; then
-              # Truncate at the same 60 KB cap the PR-comment step uses.
               head -c 60000 "$PLAN_OUTPUT_PATH"
               if [ "$(wc -c < "$PLAN_OUTPUT_PATH")" -gt 60000 ]; then
                 echo
@@ -190,12 +141,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post Plan to PR
-        # `pull_request_target` runs in the base-repo context and gives a
-        # write-capable GITHUB_TOKEN even for fork PRs, so commenting
-        # works there. `pull_request` from a fork downgrades GITHUB_TOKEN
-        # to read-only regardless of `permissions:`, so this step would
-        # 403 — gate it on same-repo head. Step Summary above carries the
-        # same content as a no-token fallback either way.
         if: |
           github.event_name == 'pull_request_target' ||
           (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)

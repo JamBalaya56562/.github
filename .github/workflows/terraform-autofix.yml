@@ -1,31 +1,5 @@
 name: Terraform Autofix
 
-# Reusable workflow that runs `tofu fmt -recursive` on an OpenTofu module
-# and pushes the resulting changes back to the pull request branch so
-# contributors don't have to fix formatting by hand. Format-only: the
-# plan workflow still enforces `tofu validate` and flags remaining fmt
-# drift (there shouldn't be any after this runs).
-#
-# Caller example (vivarium/.github/workflows/terraform-autofix.yml):
-#
-#   jobs:
-#     autofix:
-#       uses: aletheia-works/.github/.github/workflows/terraform-autofix.yml@main
-#       with:
-#         working_directory: infra/github
-#       secrets: inherit
-#
-# Fork PRs are supported via the `pull_request_target` callers + the
-# TF_TOKEN_GITHUB PAT below — that PAT can write to the maintainer's
-# personal forks (`JamBalaya56562/*`) where `sl pr submit` lands every
-# PR. SECURITY NOTE: same as terraform-plan.yml — combined with
-# `secrets: inherit` this means fork-PR HCL is touched with the org's
-# TF token. Acceptable here because the codebase has no
-# `terraform_data`/`local-exec`/external data sources and `tofu fmt`
-# is purely textual rewriting (no provider auth, no API calls). If
-# outside-fork contributions are ever opened, switch this to
-# `pull_request` + a trusted-fork bot or an upstream-maintained PR.
-
 on:
   workflow_call:
     inputs:
@@ -58,11 +32,6 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
 
     steps:
-      # Check out the PR's head branch on the *head repo* so the fmt-fix
-      # commit lands on the contributor's branch and they can pull it
-      # locally. For fork PRs the head repo is the contributor's fork —
-      # GITHUB_TOKEN cannot write there, so use TF_TOKEN_GITHUB (the org
-      # PAT, which has write access to the maintainer's personal forks).
       - name: Checkout PR branch
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -70,6 +39,7 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           token: ${{ secrets.TF_TOKEN_GITHUB }}
           persist-credentials: true
+          allow-unsafe-pr-checkout: true
 
       - name: Setup OpenTofu
         uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
@@ -80,9 +50,6 @@ jobs:
       - name: Tofu Format
         run: tofu fmt -recursive
 
-      # Commit & push only when fmt actually changed files. `git diff
-      # --quiet` exits non-zero when there are unstaged diffs, which we
-      # use as the "there is something to fix" signal.
       - name: Commit and push fixes
         working-directory: ${{ github.workspace }}
         env:
