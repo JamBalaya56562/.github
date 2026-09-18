@@ -176,18 +176,6 @@ locals {
   }
 }
 
-# The twelve labels already exist: they were made by hand, or by GitHub
-# when terraform-apply.yml filed an issue with a label it did not have.
-# The provider creates rather than adopts, so the first apply after #52
-# failed with 422 already_exists on every one. This block brings them
-# into state on the next apply; delete it once that apply has run, the
-# way infra/github-org dropped its own import blocks.
-import {
-  for_each = local.labels
-  to       = github_issue_label.labels[each.key]
-  id       = ".github:${each.key}"
-}
-
 resource "github_issue_label" "labels" {
   for_each = local.labels
 
