@@ -46,7 +46,7 @@ jobs:
           persist-credentials: false
           allow-unsafe-pr-checkout: true
 
-      - uses: anthropics/claude-code-action@d5f7970ae232b6039636a16ea7f251e58e814f38 # v1.0.272
+      - uses: anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8 # v1.0.275
         with:
           # The job's `if` already limits the review to pull requests the listed
           # authors opened, so a bot's own pull request never gets here. This lets
