@@ -144,6 +144,99 @@ resource "github_actions_organization_workflow_permissions" "this" {
 }
 
 
+# ─── Actions policies (workflow execution protections) ──────────────
+#
+# From 2026-12-02 GitHub blocks `pull_request_target` in public
+# repositories unless an Actions event policy explicitly allows it
+# (https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2/).
+# The workflows below rely on it so fork PRs still get secrets-backed
+# plan / review / labelling, so they are allowlisted here.
+#
+# An event policy is an allowlist: a targeted workflow can ONLY be
+# started by the events listed in `allowed_events`. Every trigger a
+# targeted workflow declares must therefore be listed, which is why the
+# workflows that also listen to `issues` get a separate policy. Paths
+# are matched against the top-level (caller) workflow in each repo, not
+# the reusable workflow it calls.
+#
+# integrations/github has no resource for org Actions policies yet
+# (integrations/terraform-provider-github#3724), so these go through the
+# REST API with Mastercard/restapi. Migrate to the native resource once
+# it exists: import the policy IDs and remove these blocks.
+#
+# Import an existing policy via seed-state.yml (ID from
+# `gh api orgs/aletheia-works/actions/policies`):
+#   gh workflow run seed-state.yml --repo aletheia-works/.github \
+#     -f import_address='restapi_object.actions_policy["pr_only"]' \
+#     -f import_id=/orgs/aletheia-works/actions/policies/<id>
+
+locals {
+  actions_policies = {
+    issues_and_pr = {
+      name           = "Allow pull_request_target: issues and pull request workflows"
+      allowed_events = ["issues", "pull_request_target"]
+      workflow_paths = [
+        ".github/workflows/assign.yml",
+        ".github/workflows/project-fields.yml",
+      ]
+    }
+    pr_only = {
+      name           = "Allow pull_request_target: pull request only workflows"
+      allowed_events = ["pull_request_target"]
+      workflow_paths = [
+        # Callers of the reusable workflows in this repo.
+        ".github/workflows/aws-terraform-plan.yml",
+        ".github/workflows/claude-review.yml",
+        ".github/workflows/dependency-review.yml",
+        ".github/workflows/labeler.yml",
+        ".github/workflows/terraform-plan.yml",
+        ".github/workflows/tofu-fmt-autofix.yml",
+        # `.github`'s own thin callers for its infra/ modules.
+        ".github/workflows/dotgithub-claude-review.yml",
+        ".github/workflows/dotgithub-terraform-autofix.yml",
+        ".github/workflows/dotgithub-terraform-plan.yml",
+        ".github/workflows/org-terraform-autofix.yml",
+        ".github/workflows/org-terraform-plan.yml",
+      ]
+    }
+  }
+}
+
+resource "restapi_object" "actions_policy" {
+  for_each = local.actions_policies
+
+  path = "/orgs/${var.github_owner}/actions/policies"
+
+  data = jsonencode({
+    name = each.value.name
+    # Free plan: `evaluate` is Enterprise-only, so the policy is either
+    # `active` or `disabled`.
+    enforcement = "active"
+    conditions = {
+      repository_name = {
+        include   = var.pull_request_target_repositories
+        exclude   = []
+        protected = false
+      }
+      workflow_path = {
+        include = each.value.workflow_paths
+        exclude = []
+      }
+    }
+    rules = [{
+      type = "restrict_action_events"
+      parameters = {
+        allowed_events = each.value.allowed_events
+      }
+    }]
+  })
+
+  # The API echoes id, target, source_type, _links, timestamps, … which
+  # are not part of `data`; only drift in the fields declared above counts.
+  ignore_server_additions = true
+}
+
+
 # ─── Memberships ─────────────────────────────────────────────────────
 #
 # Only owners (admins) are pinned in code; regular members can be added

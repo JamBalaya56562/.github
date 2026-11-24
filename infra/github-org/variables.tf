@@ -64,3 +64,15 @@ variable "allowed_action_patterns" {
     "Swatinem/rust-cache@*",
   ]
 }
+
+variable "pull_request_target_repositories" {
+  description = <<-EOT
+    Public repositories whose `pull_request_target` workflows are allowed
+    by the org Actions policies in main.tf. GitHub blocks
+    `pull_request_target` in public repositories by default from
+    2026-12-02 unless an Actions policy allows it; private and internal
+    repositories are not affected and need not be listed.
+  EOT
+  type        = list(string)
+  default     = [".github", "coi-serviceworker", "formicarium", "paludarium", "vivarium"]
+}

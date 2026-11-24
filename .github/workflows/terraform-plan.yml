@@ -164,6 +164,9 @@ jobs:
           exit "${PIPESTATUS[0]}"
         env:
           GITHUB_TOKEN: ${{ secrets.TF_TOKEN_GITHUB }}
+          # Same token for modules using the Mastercard/restapi provider
+          # (e.g. infra/github-org Actions policies); ignored by others.
+          REST_API_BEARER: ${{ secrets.TF_TOKEN_GITHUB }}
           REPO_OWNER: ${{ github.repository_owner }}
           TFVAR_ASSIGNMENTS: ${{ inputs.tfvar_assignments }}
         continue-on-error: true
