@@ -21,6 +21,7 @@ splitting by resource type costs more in navigation than it saves.
 | `github_team` + `github_organization_role_team` (`security_managers`) | `security-managers` team bound to the predefined `security_manager` org role |
 | `github_team_membership` (`security_managers`) | Members of the security-managers team |
 | `github_team` + `github_team_membership` + `github_team_repository` (`maintainers`) | `maintainers` team that CODEOWNERS files name; write access to each repository in `var.maintainer_repositories` |
+| `restapi_object.actions_policy` | Org Actions policies allowing `pull_request_target` for the listed workflows in `var.pull_request_target_repositories` (GitHub blocks it in public repos by default from 2026-12-02). Managed via `Mastercard/restapi` until `integrations/github` gains a native resource. The token needs the `admin:org` scope. |
 
 A short list of org attributes that the provider does **not** cover yet
 (2FA enforcement, several Repo-policy toggles, Organization Rulesets,
