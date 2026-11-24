@@ -34,9 +34,15 @@ permissions:
   pull-requests: write
   actions: read
 
+# Plan only reads the state, so it stays out of the group apply, seed
+# and backup share: GitHub keeps one pending run per group, and a plan
+# queued there would cancel an apply already waiting its turn. A newer
+# plan for the same PR supersedes the older one. A plan that overlaps an
+# apply reads the state from before that apply and may show changes the
+# apply is making; re-run it once the apply has finished.
 concurrency:
-  group: ${{ inputs.state_artifact_name }}
-  cancel-in-progress: false
+  group: ${{ inputs.state_artifact_name }}-plan-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # Callers trigger on `pull_request_target`, which hands this workflow
@@ -126,6 +132,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Download state artifact
+        id: state
         continue-on-error: true
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -133,6 +140,23 @@ jobs:
           path: ${{ inputs.working_directory }}/
           run-id: ${{ vars[inputs.state_run_id_variable] || github.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The download may only fail on a module's very first run, before
+      # any apply or seed has recorded a run-id. Once one is recorded, a
+      # failed download means the state is lost or unreachable, and
+      # carrying on with an empty state would show a create for every
+      # resource: a plan that looks reviewable but would break the apply.
+      - name: Require the recorded state
+        id: require_state
+        if: steps.state.outcome != 'success' && vars[inputs.state_run_id_variable] != ''
+        env:
+          VARIABLE: ${{ inputs.state_run_id_variable }}
+          RUN_ID: ${{ vars[inputs.state_run_id_variable] }}
+          ARTIFACT: ${{ inputs.state_artifact_name }}
+          MODULE_DIR: ${{ inputs.working_directory }}
+        run: |
+          echo "::error::${VARIABLE} points at run ${RUN_ID}, but its ${ARTIFACT} artifact could not be downloaded. Refusing to continue with an empty state. Re-run this job if the download failed transiently; if the artifact is gone, rebuild the state of ${MODULE_DIR} by dispatching the Seed Terraform State workflow with start_from_empty_state=true and importing every resource."
+          exit 1
 
       - name: Tofu Init
         run: tofu init

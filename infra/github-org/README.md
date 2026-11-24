@@ -57,9 +57,11 @@ orchestrates the `tofu` binary — and sharing the workflow logic removes
 - **State artifact** (`terraform-state`) and **repo variable**
   (`LATEST_APPLY_RUN_ID`) are evaluated in the *caller's* repo context,
   so the org's state and vivarium's state never intersect.
-- **Concurrency group** (`terraform-state`) is scoped to the caller
-  workflow run, so a plan in the org repo cannot serialize behind a plan
-  in vivarium.
+- **Concurrency groups** are scoped to the caller repo, so the org
+  repo's runs never serialize behind vivarium's. Within a repo, apply,
+  seed-state and backup share the group named after the state artifact
+  (`terraform-state`), and each PR's plan runs in its own
+  `terraform-state-plan-<PR number>` group.
 - **Secrets** flow via `secrets: inherit` — `TF_TOKEN_GITHUB` and
   `TF_STATE_PASSPHRASE` are resolved in the caller repo. Reusable
   workflows never see each other's secrets store.
@@ -135,9 +137,15 @@ apply.
 State lives as a GitHub Actions artifact in this repo (90-day retention) and
 is mirrored to Release Assets weekly for long-term retention. A
 `concurrency` group keyed on the state artifact name serializes
-plan / apply / seed-state runs against this module so the artifact and
+apply / seed-state / backup runs against this module so the artifact and
 the `LATEST_APPLY_RUN_ID` repo variable can never be updated by two runs
-at once.
+at once. Plan only reads the state and runs in its own per-PR group, so
+a queued plan can never cancel an apply waiting in that group.
+
+Once `LATEST_APPLY_RUN_ID` is set, plan, apply and seed-state fail if
+its artifact cannot be downloaded instead of carrying on with an empty
+state. To rebuild a lost state, dispatch `seed-state.yml` with
+`start_from_empty_state=true` and import every resource again.
 
 ## File layout
 

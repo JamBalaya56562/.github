@@ -140,6 +140,7 @@ jobs:
       # module must be designed to bootstrap from empty state via
       # declarative `import` blocks.
       - name: Download state artifact
+        id: state
         continue-on-error: true
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -147,6 +148,25 @@ jobs:
           path: ${{ inputs.working_directory }}/
           run-id: ${{ vars[inputs.state_run_id_variable] || github.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The download may only fail on a module's very first run, before
+      # any apply or seed has recorded a run-id. Once one is recorded, a
+      # failed download means the state is lost or unreachable, and
+      # carrying on with an empty state would try to create every
+      # resource: 422s on the ones that exist, duplicates of the ones the
+      # API does not deduplicate, and an upload that replaces the real
+      # state.
+      - name: Require the recorded state
+        id: require_state
+        if: steps.state.outcome != 'success' && vars[inputs.state_run_id_variable] != ''
+        env:
+          VARIABLE: ${{ inputs.state_run_id_variable }}
+          RUN_ID: ${{ vars[inputs.state_run_id_variable] }}
+          ARTIFACT: ${{ inputs.state_artifact_name }}
+          MODULE_DIR: ${{ inputs.working_directory }}
+        run: |
+          echo "::error::${VARIABLE} points at run ${RUN_ID}, but its ${ARTIFACT} artifact could not be downloaded. Refusing to continue with an empty state. Re-run this job if the download failed transiently; if the artifact is gone, rebuild the state of ${MODULE_DIR} by dispatching the Seed Terraform State workflow with start_from_empty_state=true and importing every resource."
+          exit 1
 
       - name: Tofu Init
         run: tofu init
@@ -234,7 +254,7 @@ jobs:
       # new one per run. The hidden HTML marker distinguishes auto-filed
       # issues from human-filed ones that happen to share the label.
       - name: Notify on failure
-        if: always() && steps.apply.outcome == 'failure'
+        if: always() && (steps.apply.outcome == 'failure' || steps.require_state.outcome == 'failure')
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           WORKING_DIRECTORY: ${{ inputs.working_directory }}

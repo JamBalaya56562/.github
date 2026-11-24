@@ -101,9 +101,12 @@ apply.
 State lives as the `terraform-state-dotgithub` GitHub Actions artifact
 (90-day retention) and is mirrored to Release Assets weekly for
 long-term retention. A `concurrency` group keyed on the state artifact
-name serializes plan / apply / seed-state runs against this module so
+name serializes apply / seed-state / backup runs against this module so
 the artifact and the `LATEST_APPLY_RUN_ID_DOTGITHUB` repo variable can
-never be updated by two runs at once.
+never be updated by two runs at once. Plan only reads the state and runs
+in its own per-PR group. Once the run-id variable is set, plan, apply
+and seed-state fail if its artifact cannot be downloaded instead of
+carrying on with an empty state (see `infra/github-org/README.md`).
 
 ## File layout
 
